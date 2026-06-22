@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BBB Team Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/msal.js/2.38.3/msal-browser.min.js"></script>
+<style>
+:root {
+  --bg:#F3F4F6;--surface:#FFFFFF;--border:#E5E7EB;--text:#374151;
+  --heading:#274C84;--accent:#ABCB39;--nav:#274C84;
+  --success:#10B981;--danger:#EF4444;--warning:#F59E0B;--muted:#6B7280;
+  --shadow:0 1px 4px rgba(0,0,0,.08);
+}
+[data-theme="dark"]{
+  --bg:#0D1B2A;--surface:#112236;--border:#1E3A5F;--text:#F3F4F6;
+  --heading:#ABCB39;--accent:#ABCB39;--muted:#9CA3AF;
+  --shadow:0 1px 4px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+button{font-family:inherit;cursor:pointer;}
+
+/* ── NAV ── */
+nav{background:var(--nav);height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.nav-left{display:flex;align-items:center;gap:12px;}
+.nav-logo{height:26px;}
+.nav-brand{color:#fff;font-weight:700;font-size:14px;}
+.nav-tag{color:#ABCB39;font-size:11px;display:block;font-weight:400;margin-top:1px;}
+.nav-right{display:flex;align-items:center;gap:8px;}
+.nav-user{display:flex;align-items:center;gap:8px;color:#fff;font-size:13px;}
+.avatar{width:30px;height:30px;border-radius:50%;background:#ABCB39;color:#0D1B2A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
+.btn-nav{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;}
+.btn-nav:hover{background:rgba(255,255,255,.2);}
+.btn-sign{background:#ABCB39;border:none;color:#0D1B2A;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;}
+.btn-sign:hover{opacity:.88;}
+
+/* ── LOGIN SCREEN ── */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 54px);padding:40px 20px;}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:44px 40px;max-width:420px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1);}
+.login-card .logo-wrap{margin-bottom:24px;}
+.login-card img{height:36px;}
+.login-card h1{color:var(--heading);font-size:22px;font-weight:700;margin-bottom:8px;}
+.login-card p{color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:28px;}
+.ms-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#0078D4;border:none;color:#fff;border-radius:8px;padding:13px 20px;font-size:14px;font-weight:600;margin-bottom:12px;}
+.ms-btn:hover{background:#006CBD;}
+.ms-btn svg{flex-shrink:0;}
+.login-note{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.6;}
+.config-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:20px;text-align:left;}
+.config-box p{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;}
+.config-box input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:12px;margin-bottom:6px;outline:none;}
+.config-box input:focus{border-color:#274C84;}
+.config-box label{font-size:11px;color:var(--muted);}
+
+/* ── MAIN LAYOUT ── */
+#appScreen{display:none;padding:20px 22px 48px;}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1280px;margin:0 auto;}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
+
+/* ── STATS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:1280px;margin:0 auto 18px;}
+@media(max-width:700px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;box-shadow:var(--shadow);}
+.stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.stat .val{font-size:24px;font-weight:700;color:var(--heading);}
+.stat .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.stat.green .val{color:#10B981;}
+.stat.red .val{color:#EF4444;}
+.stat.yellow .val{color:#F59E0B;}
+
+/* ── PANEL ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;}
+.panel-head{background:#274C84;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+[data-theme="dark"] .panel-head{background:#1A3455;}
+.panel-head h2{color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;}
+[data-theme="dark"] .panel-head h2{color:#ABCB39;}
+.panel-head .panel-actions{display:flex;gap:6px;}
+.pbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;}
+.pbtn:hover{background:rgba(255,255,255,.25);}
+.panel-body{flex:1;overflow-y:auto;max-height:420px;}
+
+/* ── EMAIL LIST ── */
+.email-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.email-item:hover{background:rgba(39,76,132,.05);}
+.email-item.unread .email-subject{font-weight:700;color:var(--heading);}
+.email-item.unread{border-left:3px solid #ABCB39;}
+.email-item:not(.unread){border-left:3px solid transparent;}
+.email-from{font-size:12px;color:var(--muted);margin-bottom:3px;display:flex;justify-content:space-between;}
+.email-from .time{font-size:11px;}
+.email-subject{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.email-preview{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── CALENDAR ── */
+.cal-event{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start;}
+.cal-time-col{min-width:56px;text-align:center;}
+.cal-time-col .cal-date{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.cal-time-col .cal-day{font-size:20px;font-weight:700;color:var(--heading);line-height:1.1;}
+.cal-detail{flex:1;min-width:0;}
+.cal-title{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.cal-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;}
+.cal-badge.teams{background:#5059C9;color:#fff;}
+.cal-badge.busy{background:#274C84;color:#fff;}
+.cal-badge.free{background:#10B981;color:#fff;}
+
+/* ── COMPOSE ── */
+.compose-form{padding:16px;}
+.cf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.cf-row.full{grid-template-columns:1fr;}
+.cf-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;}
+.cf-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;outline:none;}
+.cf-input:focus{border-color:#274C84;}
+textarea.cf-input{resize:vertical;min-height:80px;}
+.compose-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+
+/* ── EVENT FORM ── */
+.event-form{padding:16px;}
+
+/* ── COSMOS STRIP ── */
+.cosmos-strip{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:18px;max-width:1280px;margin-left:auto;margin-right:auto;overflow:hidden;box-shadow:var(--shadow);}
+.cs-head{background:#1A3455;padding:11px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.cs-head span{color:#ABCB39;font-size:12px;font-weight:700;}
+.cs-body{display:none;padding:14px 16px;}
+.cs-body.open{display:block;}
+.cs-body pre{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;color:var(--text);overflow-x:auto;white-space:pre-wrap;line-height:1.7;max-height:240px;overflow-y:auto;}
+.cs-meta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.cs-meta span{font-size:11px;color:var(--muted);}
+.cs-meta strong{color:var(--heading);}
+
+/* ── LOADING / EMPTY ── */
+.loading{padding:32px;text-align:center;color:var(--muted);font-size:13px;}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:#274C84;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-msg{padding:32px;text-align:center;color:var(--muted);font-size:13px;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:#274C84;color:#fff;border-left:4px solid #ABCB39;padding:11px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.22);z-index:999;opacity:0;transform:translateY(8px);transition:all .22s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* ── TABS ── */
+.tab-row{display:flex;border-bottom:1px solid var(--border);background:var(--surface);}
+.tab{padding:9px 16px;font-size:12px;font-weight:600;color:var(--muted);border:none;background:none;border-bottom:2px solid transparent;cursor:pointer;}
+.tab.active{color:var(--heading);border-bottom-color:#ABCB39;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+footer{background:#274C84;border-top:3px solid #ABCB39;color:rgba(255,255,255,.65);text-align:center;padding:12px;font-size:11px;margin-top:40px;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <img src="https://bitxbit.com/wp-content/uploads/2025/10/logo_header.png" alt="BITbyBIT" class="nav-logo" onerror="this.style.display='none'">
+    <div>
+      <div class="nav-brand">Team Dashboard</div>
+      <span class="nav-tag">Azure Static Web App · Microsoft Graph · Cosmos DB</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user" id="navUser" style="display:none">
+      <div class="avatar" id="navAvatar">?</div>
+      <span id="navName"></span>
+      <button class="btn-nav" onclick="signOut()">Sign out</button>
+    </div>
+    <button class="btn-nav" onclick="toggleTheme()">🌙</button>
+    <button class="btn-sign" id="btnSignIn" onclick="signIn()">Sign in with Microsoft</button>
+  </div>
+</nav>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="logo-wrap">
+      <img src="https://bitxbit.com/wp-content/uploads/2025/10/logo_header.png" alt="BITbyBIT" onerror="this.style.display='none'">
+    </div>
+    <h1>BBB Team Dashboard</h1>
+    <p>Connect your Microsoft account to see your Outlook inbox, upcoming meetings, send emails, and create calendar events — all in one place.</p>
+    <button class="ms-btn" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+      Sign in with Microsoft
+    </button>
+    <div class="config-box">
+      <p>⚙️ Azure App Registration (required for real auth)</p>
+      <label>Azure AD Client ID</label>
+      <input type="text" id="cfgClientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="updateConfig()">
+      <label style="margin-top:6px;display:block;">Tenant ID (or "common")</label>
+      <input type="text" id="cfgTenantId" placeholder="common" oninput="updateConfig()">
+    </div>
+    <p class="login-note">No Client ID? The demo runs with mock data so you can preview the full UI. Enter your Azure App Registration Client ID above to connect real Outlook data.</p>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="appScreen">
+  <!-- STATS -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat"><div class="lbl">Unread Emails</div><div class="val" id="sUnread">—</div><div class="sub">in inbox</div></div>
+    <div class="stat green"><div class="lbl">Today's Meetings</div><div class="val" id="sMeetings">—</div><div class="sub">on calendar</div></div>
+    <div class="stat yellow"><div class="lbl">Sent Today</div><div class="val" id="sSent">—</div><div class="sub">emails sent</div></div>
+    <div class="stat"><div class="lbl">Cosmos Logs</div><div class="val" id="sCosmos">—</div><div class="sub">activity records</div></div>
+  </div>
+
+  <div class="dash-grid">
+
+    <!-- INBOX PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Outlook Inbox
+        </h2>
+        <div class="panel-actions">
+          <button class="pbtn" onclick="loadEmails()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="tab-row">
+        <button class="tab active" onclick="switchTab('inbox','tabInbox')">Inbox</button>
+        <button class="tab" onclick="switchTab('inbox','tabCompose')">Compose</button>
+      </div>
+      <div class="panel-body">
+        <div class="tab-panel active" id="tabInbox">
+          <div class="loading" id="inboxLoading"><span class="spin"></span> Loading emails...</div>
+          <div id="inboxList"></div>
+        </div>
+        <div class="tab-panel" id="tabCompose">
+          <div class="compose-form">
+            <div class="cf-row full"><div>
+              <div class="cf-label">To</div>
+              <input class="cf-input" id="cTo" placeholder="recipient@example.com">
+            </div></div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">CC</div>
+              <input class="cf-input" id="cCc" placeholder="optional cc...">
+            </div></div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">Subject</div>
+              <input class="cf-input" id="cSubject" placeholder="Email subject">
+            </div></div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">Message</div>
+              <textarea class="cf-input" id="cBody" placeholder="Write your message here..."></textarea>
+            </div></div>
+            <div class="compose-footer">
+              <button class="pbtn" style="background:transparent;color:var(--muted);border-color:var(--border)" onclick="clearCompose()">Clear</button>
+              <button class="ms-btn" style="width:auto;padding:8px 18px;font-size:13px;border-radius:6px;gap:6px;background:#0078D4;margin:0" onclick="sendEmail()">
+                <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR PANEL -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Calendar
+        </h2>
+        <div class="panel-actions">
+          <button class="pbtn" onclick="loadCalendar()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="tab-row">
+        <button class="tab active" onclick="switchTab('cal','tabCalEvents')">Upcoming</button>
+        <button class="tab" onclick="switchTab('cal','tabNewEvent')">New Event</button>
+      </div>
+      <div class="panel-body">
+        <div class="tab-panel active" id="tabCalEvents">
+          <div class="loading" id="calLoading"><span class="spin"></span> Loading calendar...</div>
+          <div id="calList"></div>
+        </div>
+        <div class="tab-panel" id="tabNewEvent">
+          <div class="event-form">
+            <div class="cf-row full"><div>
+              <div class="cf-label">Event Title</div>
+              <input class="cf-input" id="eTitle" placeholder="Meeting title">
+            </div></div>
+            <div class="cf-row">
+              <div>
+                <div class="cf-label">Start</div>
+                <input class="cf-input" id="eStart" type="datetime-local">
+              </div>
+              <div>
+                <div class="cf-label">End</div>
+                <input class="cf-input" id="eEnd" type="datetime-local">
+              </div>
+            </div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">Location / Teams Link</div>
+              <input class="cf-input" id="eLocation" placeholder="Room or online">
+            </div></div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">Attendees (comma separated)</div>
+              <input class="cf-input" id="eAttendees" placeholder="user@domain.com, user2@domain.com">
+            </div></div>
+            <div class="cf-row full"><div>
+              <div class="cf-label">Notes</div>
+              <textarea class="cf-input" id="eNotes" placeholder="Agenda or description..." style="min-height:60px"></textarea>
+            </div></div>
+            <div class="compose-footer">
+              <button class="ms-btn" style="width:auto;padding:8px 18px;font-size:13px;border-radius:6px;background:#0078D4;margin:0" onclick="createEvent()">
+                <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create Event
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- COSMOS STRIP -->
+  <div class="cosmos-strip">
+    <div class="cs-head" onclick="toggleCosmos()">
+      <span>⬡ Azure Cosmos DB — Activity Log (bbb-dashboard-db / activityLog)</span>
+      <span id="cosmosChev" style="color:#ABCB39;font-size:16px">▾</span>
+    </div>
+    <div class="cs-body" id="csBody">
+      <div class="cs-meta">
+        <span>Database: <strong>bbb-dashboard-db</strong></span>
+        <span>Container: <strong>activityLog</strong></span>
+        <span>Partition key: <strong>/userId</strong></span>
+        <span>API: <strong>NoSQL Core</strong></span>
+        <span>Records logged: <strong id="csCount">0</strong></span>
+      </div>
+      <pre id="csPreview">// No activity yet — sign in and interact to see Cosmos DB documents</pre>
+    </div>
+  </div>
+</div>
+
+<footer>BITbyBIT · tech savvy. business smart. · Team Dashboard v1.0 · Azure Static Web App + Microsoft Graph + Cosmos DB</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────
+let CLIENT_ID = localStorage.getItem('bbb_clientId') || '';
+let TENANT_ID = localStorage.getItem('bbb_tenantId') || 'common';
+const SCOPES   = ['User.Read','Mail.ReadWrite','Mail.Send','Calendars.ReadWrite'];
+const COSMOS_KEY = 'bbb_cosmos_activity';
+
+let msalInstance = null;
+let account      = null;
+let isMock       = false;
+let cosmosLog    = JSON.parse(localStorage.getItem(COSMOS_KEY) || '[]');
+let sentToday    = 0;
+
+function updateConfig() {
+  CLIENT_ID = document.getElementById('cfgClientId').value.trim();
+  TENANT_ID = document.getElementById('cfgTenantId').value.trim() || 'common';
+  localStorage.setItem('bbb_clientId', CLIENT_ID);
+  localStorage.setItem('bbb_tenantId', TENANT_ID);
+}
+
+// ─── MSAL INIT ────────────────────────────────────────────────────
+function getMsal() {
+  if (msalInstance) return msalInstance;
+  if (!CLIENT_ID) return null;
+  msalInstance = new msal.PublicClientApplication({
+    auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: window.location.href.split('?')[0] },
+    cache: { cacheLocation: 'localStorage' }
+  });
+  return msalInstance;
+}
+
+async function getToken() {
+  const m = getMsal();
+  if (!m || !account) return null;
+  try {
+    const r = await m.acquireTokenSilent({ scopes: SCOPES, account });
+    return r.accessToken;
+  } catch {
+    const r = await m.acquireTokenPopup({ scopes: SCOPES });
+    return r.accessToken;
+  }
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────
+async function signIn() {
+  if (!CLIENT_ID) { startMockMode(); return; }
+  try {
+    const m = getMsal();
+    const r = await m.loginPopup({ scopes: SCOPES });
+    account = r.account;
+    onSignedIn(account.name, account.username);
+  } catch(e) {
+    showToast('Sign-in failed: ' + e.message);
+  }
+}
+
+function signOut() {
+  if (isMock) { showLogin(); return; }
+  const m = getMsal();
+  if (m && account) m.logoutPopup({ account });
+  account = null; isMock = false;
+  showLogin();
+}
+
+function onSignedIn(name, email) {
+  const initials = name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  document.getElementById('navAvatar').textContent = initials;
+  document.getElementById('navName').textContent   = name;
+  document.getElementById('navUser').style.display = 'flex';
+  document.getElementById('btnSignIn').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display   = 'block';
+  loadEmails();
+  loadCalendar();
+  updateStats();
+  logCosmos('sign_in', { name, email });
+}
+
+function showLogin() {
+  document.getElementById('navUser').style.display  = 'none';
+  document.getElementById('btnSignIn').style.display = '';
+  document.getElementById('loginScreen').style.display = '';
+  document.getElementById('appScreen').style.display   = 'none';
+}
+
+// ─── MOCK MODE ────────────────────────────────────────────────────
+function startMockMode() {
+  isMock = true;
+  onSignedIn('Ricky (Demo)', 'ricky@bitxbit.com');
+  showToast('Running in demo mode — no Client ID set.');
+}
+
+const MOCK_EMAILS = [
+  {id:'e1',isRead:false,from:{emailAddress:{name:'Andri Anwar',address:'andri@bitxbit.com'}},subject:'[URGENT] vCenter snapshot report — 3 VMs near capacity',receivedDateTime:'2026-06-21T08:14:00Z',bodyPreview:'Hi Ricky, ran the PowerCLI report this morning. SRV-APP01, SRV-SQL01 and SRV-MAIL01 are above 80% snapshot storage...'},
+  {id:'e2',isRead:false,from:{emailAddress:{name:'Kristen',address:'kristen@bitxbit.com'}},subject:'Timesheet reminder — June week 3',receivedDateTime:'2026-06-21T07:30:00Z',bodyPreview:'Just a reminder to submit your timesheet for the week ending June 21. Please use the PendingTimesheet portal...'},
+  {id:'e3',isRead:true,from:{emailAddress:{name:'Azure Alerts',address:'noreply@microsoft.com'}},subject:'Alert: Cosmos DB RU consumption > 80%',receivedDateTime:'2026-06-20T23:55:00Z',bodyPreview:'Your Cosmos DB account bbb-patching-db has exceeded 80% of provisioned throughput in the last hour...'},
+  {id:'e4',isRead:true,from:{emailAddress:{name:'Client A',address:'admin@clienta.com'}},subject:'Server down — cannot access shared drive',receivedDateTime:'2026-06-20T16:20:00Z',bodyPreview:'Hi team, we have been unable to access the shared drive on SRV-FILE01 since 4pm today. Please advise...'},
+  {id:'e5',isRead:true,from:{emailAddress:{name:'Microsoft Teams',address:'noreply@teams.microsoft.com'}},subject:'You have a new Teams message from Andri',receivedDateTime:'2026-06-20T14:00:00Z',bodyPreview:'Andri Anwar sent you a message in the WSE channel: "Did you check the OpenSSH deployment script?"'},
+  {id:'e6',isRead:false,from:{emailAddress:{name:'Synnex Billing',address:'billing@synnex.com'}},subject:'Invoice #INV-20260621 ready for download',receivedDateTime:'2026-06-20T10:00:00Z',bodyPreview:'Your monthly invoice is ready. Please log in to the Synnex portal to download and reconcile...'},
+];
+
+const today = new Date('2026-06-21');
+const MOCK_EVENTS = [
+  {id:'c1',subject:'WSE Weekly Standup',start:{dateTime:'2026-06-21T09:00:00'},end:{dateTime:'2026-06-21T09:30:00'},location:{displayName:'Microsoft Teams'},isOnlineMeeting:true,showAs:'busy'},
+  {id:'c2',subject:'Patching Window — SRV-FILE01 + SRV-MAIL01',start:{dateTime:'2026-06-21T22:00:00'},end:{dateTime:'2026-06-22T00:00:00'},location:{displayName:'SRV-FILE01 / SRV-MAIL01'},isOnlineMeeting:false,showAs:'busy'},
+  {id:'c3',subject:'Client A — IT Review Call',start:{dateTime:'2026-06-22T10:00:00'},end:{dateTime:'2026-06-22T11:00:00'},location:{displayName:'Microsoft Teams'},isOnlineMeeting:true,showAs:'busy'},
+  {id:'c4',subject:'Andri — vCenter Snapshot Review',start:{dateTime:'2026-06-23T14:00:00'},end:{dateTime:'2026-06-23T15:00:00'},location:{displayName:'Teams / BBB Indonesia Office'},isOnlineMeeting:true,showAs:'busy'},
+  {id:'c5',subject:'Monthly All-Hands BBB',start:{dateTime:'2026-06-25T08:00:00'},end:{dateTime:'2026-06-25T09:00:00'},location:{displayName:'Microsoft Teams'},isOnlineMeeting:true,showAs:'busy'},
+  {id:'c6',subject:'Lunch — Personal',start:{dateTime:'2026-06-21T12:00:00'},end:{dateTime:'2026-06-21T13:00:00'},location:{displayName:''},isOnlineMeeting:false,showAs:'free'},
+];
+
+// ─── EMAILS ───────────────────────────────────────────────────────
+async function loadEmails() {
+  document.getElementById('inboxLoading').style.display = '';
+  document.getElementById('inboxList').innerHTML = '';
+  let emails;
+  if (isMock) {
+    await delay(600);
+    emails = MOCK_EMAILS;
+  } else {
+    const token = await getToken();
+    const r = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=20&$select=id,subject,from,receivedDateTime,isRead,bodyPreview&$orderby=receivedDateTime%20desc', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const d = await r.json();
+    emails = d.value || [];
+  }
+  document.getElementById('inboxLoading').style.display = 'none';
+  if (!emails.length) { document.getElementById('inboxList').innerHTML = '<div class="empty-msg">No emails in inbox.</div>'; return; }
+  document.getElementById('inboxList').innerHTML = emails.map(e => {
+    const from = e.from?.emailAddress?.name || e.from?.emailAddress?.address || '?';
+    const time  = fmtTime(e.receivedDateTime);
+    return `<div class="email-item${e.isRead?'':' unread'}">
+      <div class="email-from"><span>${esc(from)}</span><span class="time">${time}</span></div>
+      <div class="email-subject">${esc(e.subject||'(no subject)')}</div>
+      <div class="email-preview">${esc(e.bodyPreview||'')}</div>
+    </div>`;
+  }).join('');
+  updateStats();
+  logCosmos('load_emails', { count: emails.length });
+}
+
+async function sendEmail() {
+  const to      = document.getElementById('cTo').value.trim();
+  const subject = document.getElementById('cSubject').value.trim();
+  const body    = document.getElementById('cBody').value.trim();
+  const cc      = document.getElementById('cCc').value.trim();
+  if (!to || !subject || !body) { showToast('To, Subject and Message are required.'); return; }
+  if (isMock) {
+    await delay(800);
+    sentToday++;
+    showToast('Email sent (demo mode).');
+    clearCompose();
+    updateStats();
+    logCosmos('send_email', { to, subject, mock: true });
+    return;
+  }
+  const token = await getToken();
+  const msg = {
+    message: {
+      subject,
+      body: { contentType: 'Text', content: body },
+      toRecipients: [{ emailAddress: { address: to } }],
+      ...(cc ? { ccRecipients: [{ emailAddress: { address: cc } }] } : {})
+    }
+  };
+  const r = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(msg)
+  });
+  if (r.ok || r.status === 202) {
+    sentToday++;
+    showToast('Email sent.');
+    clearCompose();
+    updateStats();
+    logCosmos('send_email', { to, subject });
+  } else {
+    showToast('Failed to send. Check permissions.');
+  }
+}
+
+function clearCompose() {
+  ['cTo','cCc','cSubject','cBody'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ─── CALENDAR ─────────────────────────────────────────────────────
+async function loadCalendar() {
+  document.getElementById('calLoading').style.display = '';
+  document.getElementById('calList').innerHTML = '';
+  let events;
+  if (isMock) {
+    await delay(700);
+    events = MOCK_EVENTS;
+  } else {
+    const token = await getToken();
+    const now   = new Date().toISOString();
+    const end   = new Date(Date.now() + 7*86400000).toISOString();
+    const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendarview?startDateTime=${now}&endDateTime=${end}&$top=20&$select=subject,start,end,location,isOnlineMeeting,showAs&$orderby=start/dateTime`, {
+      headers: { Authorization: 'Bearer ' + token, Prefer: 'outlook.timezone="Asia/Jakarta"' }
+    });
+    const d = await r.json();
+    events = d.value || [];
+  }
+  document.getElementById('calLoading').style.display = 'none';
+  if (!events.length) { document.getElementById('calList').innerHTML = '<div class="empty-msg">No upcoming events.</div>'; return; }
+  document.getElementById('calList').innerHTML = events.map(ev => {
+    const dt   = new Date(ev.start.dateTime);
+    const mon  = dt.toLocaleDateString('en-US',{month:'short'});
+    const day  = dt.getDate();
+    const time = dt.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const loc  = ev.location?.displayName || '';
+    const badge = ev.isOnlineMeeting ? '<span class="cal-badge teams">Teams</span>' : (ev.showAs === 'free' ? '<span class="cal-badge free">Free</span>' : '<span class="cal-badge busy">Busy</span>');
+    return `<div class="cal-event">
+      <div class="cal-time-col">
+        <div class="cal-date">${mon}</div>
+        <div class="cal-day">${day}</div>
+        <div class="cal-date" style="font-size:11px;margin-top:2px">${time}</div>
+      </div>
+      <div class="cal-detail">
+        <div class="cal-title">${esc(ev.subject||'(no title)')}${badge}</div>
+        <div class="cal-meta">${loc ? esc(loc) : 'No location'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+  logCosmos('load_calendar', { count: events.length });
+}
+
+async function createEvent() {
+  const title     = document.getElementById('eTitle').value.trim();
+  const start     = document.getElementById('eStart').value;
+  const end       = document.getElementById('eEnd').value;
+  const location  = document.getElementById('eLocation').value.trim();
+  const attendees = document.getElementById('eAttendees').value.trim();
+  const notes     = document.getElementById('eNotes').value.trim();
+  if (!title || !start || !end) { showToast('Title, start and end are required.'); return; }
+  if (isMock) {
+    await delay(600);
+    showToast('Event created (demo mode).');
+    ['eTitle','eStart','eEnd','eLocation','eAttendees','eNotes'].forEach(id=>document.getElementById(id).value='');
+    logCosmos('create_event', { title, start, mock: true });
+    return;
+  }
+  const token = await getToken();
+  const ev = {
+    subject: title,
+    start:   { dateTime: start + ':00', timeZone: 'Asia/Jakarta' },
+    end:     { dateTime: end   + ':00', timeZone: 'Asia/Jakarta' },
+    ...(location ? { location: { displayName: location } } : {}),
+    ...(notes    ? { body: { contentType: 'Text', content: notes } } : {}),
+    ...(attendees ? { attendees: attendees.split(',').map(a=>({ emailAddress:{ address:a.trim() }, type:'required' })) } : {})
+  };
+  const r = await fetch('https://graph.microsoft.com/v1.0/me/events', {
+    method: 'POST', headers: { Authorization: 'Bearer '+token, 'Content-Type':'application/json' },
+    body: JSON.stringify(ev)
+  });
+  if (r.ok) {
+    showToast('Event created.');
+    ['eTitle','eStart','eEnd','eLocation','eAttendees','eNotes'].forEach(id=>document.getElementById(id).value='');
+    loadCalendar();
+    logCosmos('create_event', { title, start });
+  } else {
+    showToast('Failed to create event. Check permissions.');
+  }
+}
+
+// ─── STATS ────────────────────────────────────────────────────────
+function updateStats() {
+  const emails   = document.querySelectorAll('.email-item.unread').length;
+  const meetings = document.querySelectorAll('.cal-event').length;
+  document.getElementById('sUnread').textContent   = emails   || '—';
+  document.getElementById('sMeetings').textContent = meetings || '—';
+  document.getElementById('sSent').textContent     = sentToday;
+  document.getElementById('sCosmos').textContent   = cosmosLog.length;
+  document.getElementById('csCount').textContent   = cosmosLog.length;
+}
+
+// ─── COSMOS DB LOG ────────────────────────────────────────────────
+function logCosmos(action, data) {
+  const doc = {
+    id: 'log_' + Date.now(),
+    userId: account?.username || 'demo@bitxbit.com',
+    action,
+    data,
+    _ts: Math.floor(Date.now()/1000),
+    _self: `dbs/bbb-dashboard-db/colls/activityLog/docs/log_${Date.now()}`,
+    timestamp: new Date().toISOString()
+  };
+  cosmosLog.unshift(doc);
+  if (cosmosLog.length > 50) cosmosLog = cosmosLog.slice(0,50);
+  localStorage.setItem(COSMOS_KEY, JSON.stringify(cosmosLog));
+  updateCosmosPreview();
+  document.getElementById('sCosmos').textContent = cosmosLog.length;
+}
+
+function updateCosmosPreview() {
+  document.getElementById('csPreview').textContent =
+    `// Azure Cosmos DB — bbb-dashboard-db / activityLog\n// Latest ${Math.min(3,cosmosLog.length)} of ${cosmosLog.length} documents\n\n` +
+    JSON.stringify(cosmosLog.slice(0,3), null, 2);
+}
+
+function toggleCosmos() {
+  const b = document.getElementById('csBody');
+  const c = document.getElementById('cosmosChev');
+  b.classList.toggle('open');
+  c.textContent = b.classList.contains('open') ? '▴' : '▾';
+  if (b.classList.contains('open')) updateCosmosPreview();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────
+function switchTab(group, activeId) {
+  const groups = { inbox: ['tabInbox','tabCompose'], cal: ['tabCalEvents','tabNewEvent'] };
+  const panels = groups[group];
+  panels.forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.toggle('active', id === activeId);
+  });
+  const tabRows = { inbox: 0, cal: 1 }[group];
+  const allTabRows = document.querySelectorAll('.tab-row');
+  const row = allTabRows[tabRows];
+  if (row) row.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', panels[i] === activeId));
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function fmtTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('bbb-theme', next);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+(function init() {
+  const saved = localStorage.getItem('bbb-theme') || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', saved);
+  const cid = localStorage.getItem('bbb_clientId') || '';
+  const tid = localStorage.getItem('bbb_tenantId') || '';
+  if (cid) document.getElementById('cfgClientId').value = cid;
+  if (tid) document.getElementById('cfgTenantId').value = tid;
+
+  // Set default datetime inputs to now / +1hr
+  const now = new Date(); now.setMinutes(0,0,0);
+  const later = new Date(now.getTime() + 3600000);
+  const toLocal = d => d.toISOString().slice(0,16);
+  document.getElementById('eStart').value = toLocal(now);
+  document.getElementById('eEnd').value   = toLocal(later);
+
+  // Try MSAL silent sign-in
+  if (cid) {
+    try {
+      const m = getMsal();
+      m.handleRedirectPromise().then(() => {
+        const accounts = m.getAllAccounts();
+        if (accounts.length) { account = accounts[0]; onSignedIn(account.name, account.username); }
+      });
+    } catch {}
+  }
+})();
+</script>
+</body>
+</html>
